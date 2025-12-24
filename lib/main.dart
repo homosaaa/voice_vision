@@ -12,7 +12,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Load environment variables
-  await dotenv.load();
+  await dotenv.load(fileName: '.env');
 
   CameraDescription? firstCamera;
 
@@ -55,6 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
       "Welcome to Voice Vision. Double tap anywhere to start the camera.";
 
   late final String apiKey;
+  bool _apiKeyMissing = false;
 
   @override
   void initState() {
@@ -63,7 +64,10 @@ class _HomeScreenState extends State<HomeScreen> {
     // Initialize API key from environment variable
     apiKey = dotenv.env['GOOGLE_GENERATIVE_AI_API_KEY'] ?? '';
     if (apiKey.isEmpty) {
-      debugPrint('Warning: API key not configured. Check .env file.');
+      debugPrint(
+        'Error: GOOGLE_GENERATIVE_AI_API_KEY not configured in .env file.',
+      );
+      _apiKeyMissing = true;
     }
 
     if (!kIsWeb) {
@@ -151,6 +155,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _describeScene() async {
+    // Guard: Prevent API calls with missing key
+    if (apiKey.isEmpty) {
+      _speak("API key is not configured. Please check your .env file.");
+      return;
+    }
+
     if (kIsWeb) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -206,6 +216,36 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Guard: Show error if API key is missing
+    if (_apiKeyMissing) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 80, color: Colors.red),
+              const SizedBox(height: 20),
+              const Text(
+                'Configuration Error',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'API key not found in .env file.\nPlease configure GOOGLE_GENERATIVE_AI_API_KEY.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, fontSize: 16),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: GestureDetector(
